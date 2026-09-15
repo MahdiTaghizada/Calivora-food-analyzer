@@ -1,0 +1,5 @@
+# Python cache faylları
+__pycache__/
+
+# Compile olunmuş Python faylları
+*.pyc
