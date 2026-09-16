@@ -3,3 +3,6 @@ __pycache__/
 
 # Compile olunmuş Python faylları
 *.pyc
+
+# VS Code files
+.vscode/
