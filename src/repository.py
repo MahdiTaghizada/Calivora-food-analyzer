@@ -15,17 +15,20 @@ async def init_pool():
 
     try:
         logger.info("Creating database pool")
+        database_url=DATABASE_URL
+        if database_url and database_url.startswith("postgresql+asyncpg://"):
+            database_url=database_url.replace(
+                "postgresql+asyncpg://",
+                "postgresql://",
+                1
+            )
 
-        pool = await asyncpg.create_pool(DATABASE_URL)
-
+        pool=await asyncpg.create_pool(database_url)
         logger.info("Database pool created")
-
         return pool
-
     except Exception:
         logger.exception("Failed to create database pool")
         raise
-
 
 async def create_table():
     try:

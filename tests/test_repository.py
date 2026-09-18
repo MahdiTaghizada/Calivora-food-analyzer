@@ -152,3 +152,29 @@ def test_get_analysis(monkeypatch):
     result = asyncio.run(repository.get_analysis(1))
 
     assert result == fake_row
+
+
+
+
+def test_init_pool_converts_database_url(monkeypatch):
+    urls=[]
+
+    async def fake_create_pool(url):
+        urls.append(url)
+        return object()
+
+    monkeypatch.setattr(
+        repository,
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:dev@localhost:5432/foodanalyzer"
+    )
+
+    monkeypatch.setattr(
+        repository.asyncpg,
+        "create_pool",
+        fake_create_pool
+    )
+
+    asyncio.run(repository.init_pool())
+
+    assert urls[0]=="postgresql://postgres:dev@localhost:5432/foodanalyzer"
