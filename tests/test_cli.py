@@ -46,3 +46,41 @@ def test_valid_image(monkeypatch, capsys):
 
     assert "Analyzing: bread_cheese.png" in output.out
     assert "TOTAL" in output.out
+
+
+
+def test_directory_path(monkeypatch, capsys):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["foodanalyzer", "analyze", "data"]
+    )
+
+    with pytest.raises(SystemExit):
+        runpy.run_module("foodanalyzer", run_name="__main__")
+
+    output = capsys.readouterr()
+
+    assert "File not found" in output.out
+
+
+
+
+def test_file_read_error(monkeypatch, capsys):
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["foodanalyzer", "analyze", "data/bread_cheese.png"]
+    )
+
+    def fake_open(*args, **kwargs):
+        raise OSError("Permission denied")
+
+    monkeypatch.setattr("builtins.open", fake_open)
+
+    with pytest.raises(SystemExit):
+        runpy.run_module("foodanalyzer", run_name="__main__")
+
+    output = capsys.readouterr()
+
+    assert "Could not read file" in output.out

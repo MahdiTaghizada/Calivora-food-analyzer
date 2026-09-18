@@ -24,17 +24,21 @@ if command != "analyze":
     sys.exit(1)
 
 path = sys.argv[2]
-if not os.path.exists(path):
+if not os.path.isfile(path):  # if not os.path.exists(path):
     logger.warning(f"File not found: {path}")
     print("File not found")
     sys.exit(1)
 
-with open(path, "rb") as file:
-    image_bytes = file.read()
+try:
+    with open(path, "rb") as file:
+        image_bytes = file.read()
+
+except OSError as error:
+    logger.error(f"Failed to read file: {error}")
+    print("Could not read file")
+    sys.exit(1)     
 content_type = mimetypes.guess_type(path)[0]
-max_size_mb = int(
-    os.getenv("MAX_IMAGE_SIZE_MB", "5")
-)
+max_size_mb = int(os.getenv("MAX_IMAGE_SIZE_MB", "5"))
 
 try:
     logger.info(f"Validating image: {path}")
