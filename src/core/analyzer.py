@@ -21,6 +21,7 @@ from src.config import settings
 from src.models import AnalysisRecord, AnalysisResponse, IngredientResult
 from src.services.ai_service import identify_with_retry
 from src.services.nutrition_cache import CachedNutritionProvider
+from src.utils.images import validate_image
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +33,27 @@ class AnalysisRepository(Protocol):
 
 def validate_image_path(image_path: str | Path, max_size_mb: int | None = None) -> Path:
     path = Path(image_path)
+
     if not path.is_file():
         raise ValueError("Image file does not exist")
-    if path.suffix.casefold() not in {".jpg", ".jpeg", ".png"}:
+
+    suffix=path.suffix.casefold()
+
+    if suffix not in {".jpg",".jpeg",".png"}:
         raise ValueError("Only JPEG and PNG images are supported")
-    limit = settings.max_image_size_mb if max_size_mb is None else max_size_mb
-    if path.stat().st_size > limit * 1024 * 1024:
+
+    limit=settings.max_image_size_mb if max_size_mb is None else max_size_mb
+
+    if path.stat().st_size>limit*1024*1024:
         raise ValueError(f"Image exceeds the {limit} MB size limit")
+
+    content_type="image/png" if suffix==".png" else "image/jpeg"
+
     with path.open("rb") as image:
-        signature = image.read(8)
-    is_png = signature == b"\x89PNG\r\n\x1a\n"
-    is_jpeg = signature[:3] == b"\xff\xd8\xff"
-    if not (is_png or is_jpeg):
-        raise ValueError("Uploaded file is not a valid JPEG or PNG image")
+        image_bytes=image.read()
+
+    validate_image(image_bytes,content_type,limit)
+
     return path
 
 
