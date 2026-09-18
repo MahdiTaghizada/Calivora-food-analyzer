@@ -1,5 +1,9 @@
 import pytest
 from src.validation import ImageValidationError, validate_not_empty
+from io import BytesIO
+from PIL import Image
+
+from src.validation import validate_image_content
 
 def test_empty_image():
     with pytest.raises(ImageValidationError):
@@ -41,11 +45,11 @@ def test_valid_jpeg_format():
 
 from src.validation import validate_image
 def test_validate_image():
-    validate_image(
-        b"\x89PNG\r\n\x1a\n",
-        "image/png",
-        5
-    )
+    buffer=BytesIO()
+    image=Image.new("RGB",(1,1))
+    image.save(buffer,format="PNG")
+    image_bytes=buffer.getvalue()
+    validate_image(image_bytes,"image/png",5)
 
 
 def test_valid_png():
@@ -64,3 +68,9 @@ def test_mime_does_not_match_image():
 
     with pytest.raises(ImageValidationError):
         validate_image_format(image_bytes, "image/png")
+
+
+def test_corrupted_image():
+    image_bytes=b"\x89PNG\r\n\x1a\nbad-data"
+    with pytest.raises(ImageValidationError):
+        validate_image_content(image_bytes)
