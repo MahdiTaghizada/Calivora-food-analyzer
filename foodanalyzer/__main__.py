@@ -7,6 +7,12 @@ from src.validation import validate_image, ImageValidationError
 from src.logging_config import setup_logging
 
 
+from io import StringIO
+from contextlib import redirect_stdout
+
+import asyncio
+from src.repository import init_pool,create_table,save_analysis,close_pool
+
 setup_logging()
 
 logger = logging.getLogger(__name__)
@@ -55,5 +61,24 @@ except ImageValidationError as error:
     sys.exit(1)
 
 logger.info(f"Starting analysis: {path}")
-run_demo(True, path)
+output=StringIO()
+with redirect_stdout(output):
+    run_demo(True,path)
+result=output.getvalue()
+print(result,end="")
 logger.info(f"Analysis completed: {path}")
+
+async def save_result():
+    await init_pool()
+    await create_table()
+    await save_analysis(path,result)
+    await close_pool()
+
+if os.getenv("DATABASE_URL"):
+    try:
+        asyncio.run(save_result())
+        logger.info("Analysis saved to database")
+    except Exception as error:
+        logger.error(f"Database save failed: {error}")
+else:
+    logger.warning("DATABASE_URL is not set, database save skipped")

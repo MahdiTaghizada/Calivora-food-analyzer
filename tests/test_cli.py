@@ -34,6 +34,8 @@ def test_file_not_found(monkeypatch, capsys):
 
 
 def test_valid_image(monkeypatch, capsys):
+    monkeypatch.delenv("DATABASE_URL",raising=False)
+    
     monkeypatch.setattr(
         sys,
         "argv",
@@ -62,8 +64,6 @@ def test_directory_path(monkeypatch, capsys):
     output = capsys.readouterr()
 
     assert "File not found" in output.out
-
-
 
 
 def test_file_read_error(monkeypatch, capsys):
