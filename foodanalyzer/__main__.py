@@ -3,15 +3,15 @@ import os
 import mimetypes
 import logging
 from demo_ai import run_demo
-from src.validation import validate_image, ImageValidationError
-from src.logging_config import setup_logging
+from foodanalyzer.utils.images import validate_image, ImageValidationError
+from foodanalyzer.logging_config import setup_logging
 
 
 from io import StringIO
 from contextlib import redirect_stdout
 
 import asyncio
-from src.repository import init_pool,create_table,save_analysis,close_pool
+from foodanalyzer.storage.repository import init_pool,create_table,save_analysis,close_pool
 
 setup_logging()
 

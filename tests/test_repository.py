@@ -1,5 +1,5 @@
 import asyncio
-from src import repository
+from foodanalyzer.storage import repository
 
 
 def test_init_pool(monkeypatch):
