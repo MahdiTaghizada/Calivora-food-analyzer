@@ -153,28 +153,50 @@ def test_get_analysis(monkeypatch):
 
     assert result == fake_row
 
+def test_row_to_record():
+    fake_row={
+        "id":1,
+        "image_path":"image.png",
+        "result":"test result",
+        "created_at":None
+    }
 
+    record=repository.row_to_record(fake_row)
 
+    assert record.id==1
+    assert record.image_path=="image.png"
+    assert record.result=="test result"
+    assert record.created_at is None
 
-def test_init_pool_converts_database_url(monkeypatch):
-    urls=[]
+def test_get_analysis_record():
+    fake_row={
+        "id":1,
+        "image_path":"image.png",
+        "result":"test result",
+        "created_at":None
+    }
 
-    async def fake_create_pool(url):
-        urls.append(url)
-        return object()
+    class FakeConnection:
+        async def fetchrow(self,query,analysis_id):
+            return fake_row
 
-    monkeypatch.setattr(
-        repository,
-        "DATABASE_URL",
-        "postgresql+asyncpg://postgres:dev@localhost:5432/foodanalyzer"
-    )
+    class FakeAcquire:
+        async def __aenter__(self):
+            return FakeConnection()
 
-    monkeypatch.setattr(
-        repository.asyncpg,
-        "create_pool",
-        fake_create_pool
-    )
+        async def __aexit__(self,exc_type,exc,tb):
+            pass
 
-    asyncio.run(repository.init_pool())
+    class FakePool:
+        def acquire(self):
+            return FakeAcquire()
 
-    assert urls[0]=="postgresql://postgres:dev@localhost:5432/foodanalyzer"
+    repo=repository.PostgresAnalysisRepository()
+    repo.pool=FakePool()
+
+    record=asyncio.run(repo.get_analysis_record(1))
+
+    assert record.id==1
+    assert record.image_path=="image.png"
+    assert record.result=="test result"
+

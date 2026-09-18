@@ -10,6 +10,7 @@ from contextlib import redirect_stdout
 from demo_ai import run_demo
 from foodanalyzer.utils.images import validate_image,ImageValidationError
 from foodanalyzer.logging_config import setup_logging
+from foodanalyzer.config import get_max_image_size_mb
 from foodanalyzer.storage.repository import init_pool,create_table,save_analysis,close_pool
 
 
@@ -47,7 +48,7 @@ def main():
         sys.exit(1)
 
     content_type=mimetypes.guess_type(path)[0]
-    max_size_mb=int(os.getenv("MAX_IMAGE_SIZE_MB","5"))
+    max_size_mb=get_max_image_size_mb()
 
     try:
         logger.info(f"Validating image: {path}")
