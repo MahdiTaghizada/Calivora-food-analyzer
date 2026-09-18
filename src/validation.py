@@ -17,18 +17,21 @@ def validate_size(image_bytes,max_size_mb):
     if len(image_bytes)>max_size_mb:
         logger.warning("Image file is too large")
         raise ImageValidationError("Image file is too large")
-def validate_image_format(image_bytes): #heqiqeten format duzdu?
-    if image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+def validate_image_format(image_bytes, content_type):
+    if content_type == "image/png" and image_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
         return
-    if image_bytes.startswith(b"\xff\xd8\xff"):
+
+    if content_type == "image/jpeg" and image_bytes.startswith(b"\xff\xd8\xff"):
         return
-    logger.warning("Invalid image format")
+
+    logger.warning("Image content does not match MIME type")
     raise ImageValidationError("Invalid image format")
+
 def validate_image(image_bytes,content_type,max_size_mb):  
     logger.info("Image validation started") 
     validate_not_empty(image_bytes)
     validate_size(image_bytes,max_size_mb)
     validate_image_type(content_type)
-    validate_image_format(image_bytes)
+    validate_image_format(image_bytes, content_type)
     logger.info("Image validation completed")
     
