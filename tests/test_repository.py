@@ -120,3 +120,35 @@ def test_close_pool(monkeypatch):
 
     assert fake_pool.closed is True
     assert repository.pool is None
+
+
+
+
+
+def test_get_analysis(monkeypatch):
+    fake_row = {
+        "id": 1,
+        "image_path": "image.png",
+        "result": "test result"
+    }
+
+    class FakeConnection:
+        async def fetchrow(self, query, analysis_id):
+            return fake_row
+
+    class FakeAcquire:
+        async def __aenter__(self):
+            return FakeConnection()
+
+        async def __aexit__(self, exc_type, exc, tb):
+            pass
+
+    class FakePool:
+        def acquire(self):
+            return FakeAcquire()
+
+    monkeypatch.setattr(repository, "pool", FakePool())
+
+    result = asyncio.run(repository.get_analysis(1))
+
+    assert result == fake_row

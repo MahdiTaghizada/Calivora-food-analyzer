@@ -33,7 +33,14 @@ async def get_history():
             "SELECT * FROM analysis_history ORDER BY created_at DESC"
         )
         return rows
-
+    
+async def get_analysis(analysis_id):
+    async with pool.acquire() as connection:
+        row = await connection.fetchrow(
+            "SELECT * FROM analysis_history WHERE id = $1",
+            analysis_id
+        )
+        return row
 
 async def close_pool():
     global pool
