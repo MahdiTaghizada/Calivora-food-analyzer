@@ -84,3 +84,46 @@ def test_file_read_error(monkeypatch, capsys):
     output = capsys.readouterr()
 
     assert "Could not read file" in output.out
+
+def test_history_command(monkeypatch,capsys):
+    from foodanalyzer import cli
+
+    fake_rows=[
+        {
+            "id":1,
+            "image_path":"image.png",
+            "created_at":"2026-09-19"
+        }
+    ]
+
+    async def fake_init_pool():
+        pass
+
+    async def fake_create_table():
+        pass
+
+    async def fake_get_history():
+        return fake_rows
+
+    async def fake_close_pool():
+        pass
+
+    monkeypatch.setenv("DATABASE_URL","postgresql://test")
+    monkeypatch.setattr(cli,"init_pool",fake_init_pool)
+    monkeypatch.setattr(cli,"create_table",fake_create_table)
+    monkeypatch.setattr(cli,"get_history",fake_get_history)
+    monkeypatch.setattr(cli,"close_pool",fake_close_pool)
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["foodanalyzer","history"]
+    )
+
+    cli.main()
+
+    output=capsys.readouterr()
+
+    assert "image.png" in output.out
+    assert "2026-09-19" in output.out
+

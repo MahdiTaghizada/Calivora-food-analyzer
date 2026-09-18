@@ -11,25 +11,56 @@ from demo_ai import run_demo
 from foodanalyzer.utils.images import validate_image,ImageValidationError
 from foodanalyzer.logging_config import setup_logging
 from foodanalyzer.config import get_max_image_size_mb
-from foodanalyzer.storage.repository import init_pool,create_table,save_analysis,close_pool
+from foodanalyzer.storage.repository import init_pool,create_table,save_analysis,get_history,close_pool
 
 
 logger=logging.getLogger(__name__)
 
 
+async def show_history():
+    await init_pool()
+    await create_table()
+
+    rows=await get_history()
+
+    if not rows:
+        print("No analysis history")
+    else:
+        for row in rows:
+            print(
+                f"{row['id']} | "
+                f"{row['image_path']} | "
+                f"{row['created_at']}"
+            )
+
+    await close_pool()
+
+
 def main():
     setup_logging()
 
-    if len(sys.argv)<3:
-        logger.warning("Not enough command arguments")
+    if len(sys.argv)<2:
         print("Usage: python -m foodanalyzer analyze <path>")
+        print("       python -m foodanalyzer history")
         sys.exit(1)
 
     command=sys.argv[1]
 
+    if command=="history":
+        if not os.getenv("DATABASE_URL"):
+            print("DATABASE_URL is not set")
+            sys.exit(1)
+
+        asyncio.run(show_history())
+        return
+
     if command!="analyze":
         logger.warning(f"Unknown command: {command}")
         print("Unknown command")
+        sys.exit(1)
+
+    if len(sys.argv)<3:
+        print("Usage: python -m foodanalyzer analyze <path>")
         sys.exit(1)
 
     path=sys.argv[2]
