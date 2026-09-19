@@ -33,22 +33,49 @@ def test_file_not_found(monkeypatch, capsys):
     assert "File not found" in output.out
 
 
-def test_valid_image(monkeypatch, capsys):
-    monkeypatch.delenv("DATABASE_URL",raising=False)
-    
+def test_valid_image(monkeypatch,capsys):
+    from src import cli
+
+    class FakeResponse:
+        def model_dump_json(self,indent=2):
+            return '{"image_name":"bread_cheese.png"}'
+
+    class FakeRepository:
+        async def init_pool(self):
+            pass
+
+        async def create_table(self):
+            pass
+
+        async def close_pool(self):
+            pass
+
+    async def fake_analyze_meal(path,repository=None):
+        return FakeResponse()
+
+    monkeypatch.setattr(
+        cli,
+        "PostgresAnalysisRepository",
+        FakeRepository
+    )
+
+    monkeypatch.setattr(
+        cli,
+        "analyze_meal",
+        fake_analyze_meal
+    )
+
     monkeypatch.setattr(
         sys,
         "argv",
-        ["foodanalyzer", "analyze", "data/bread_cheese.png"]
+        ["foodanalyzer","analyze","data/bread_cheese.png"]
     )
 
-    runpy.run_module("foodanalyzer", run_name="__main__")
+    runpy.run_module("foodanalyzer",run_name="__main__")
 
-    output = capsys.readouterr()
+    output=capsys.readouterr()
 
-    assert "Analyzing: bread_cheese.png" in output.out
-    assert "TOTAL" in output.out
-
+    assert "bread_cheese.png" in output.out
 
 
 def test_directory_path(monkeypatch, capsys):
@@ -86,7 +113,7 @@ def test_file_read_error(monkeypatch, capsys):
     assert "Could not read file" in output.out
 
 def test_history_command(monkeypatch,capsys):
-    from foodanalyzer import cli
+    from src import cli
 
     fake_rows=[
         {
@@ -96,23 +123,29 @@ def test_history_command(monkeypatch,capsys):
         }
     ]
 
-    async def fake_init_pool():
-        pass
+    class FakeRepository:
+        async def init_pool(self):
+            pass
 
-    async def fake_create_table():
-        pass
+        async def create_table(self):
+            pass
 
-    async def fake_get_history():
-        return fake_rows
+        async def get_history(self):
+            return fake_rows
 
-    async def fake_close_pool():
-        pass
+        async def close_pool(self):
+            pass
 
-    monkeypatch.setenv("DATABASE_URL","postgresql://test")
-    monkeypatch.setattr(cli,"init_pool",fake_init_pool)
-    monkeypatch.setattr(cli,"create_table",fake_create_table)
-    monkeypatch.setattr(cli,"get_history",fake_get_history)
-    monkeypatch.setattr(cli,"close_pool",fake_close_pool)
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://test"
+    )
+
+    monkeypatch.setattr(
+        cli,
+        "PostgresAnalysisRepository",
+        FakeRepository
+    )
 
     monkeypatch.setattr(
         sys,

@@ -1,3 +1,3 @@
-﻿from foodanalyzer.cli import main
+from src.cli import main
 
 main()
