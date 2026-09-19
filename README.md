@@ -202,12 +202,18 @@ Configure your environment settings as needed:
 | `LOG_LEVEL` | string | `INFO` | Application log level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 | `DATABASE_URL` | string | `postgresql+asyncpg://foodanalyzer:dev@localhost:5432/foodanalyzer` | PostgreSQL connection URI. |
 | `NUTRITION_CACHE_TTL_SECONDS` | integer | `86400` | TTL in seconds for nutrition cache entries (default: 24h). |
+| `CACHE_BACKEND` | string | `memory` | Cache implementation: `memory` for a process-local cache or `redis` for a shared Redis cache. |
+| `REDIS_URL` | string | `redis://localhost:6379/0` | Redis connection URI used when `CACHE_BACKEND=redis`. |
 | `MAX_IMAGE_SIZE_MB` | integer | `5` | Maximum allowable upload file size in megabytes. |
 | `HTTP_PORT` | integer | `8000` | HTTP port for FastAPI server. |
 | `MAX_NUTRITION_CONCURRENCY` | integer | `10` | Maximum concurrent USDA lookup queries. |
 | `RETRY_ATTEMPTS` | integer | `3` | Maximum retry attempts for transient errors. |
 | `RETRY_MIN_WAIT_SECONDS` | float | `1.0` | Initial exponential backoff wait time in seconds. |
 | `RETRY_MAX_WAIT_SECONDS` | float | `10.0` | Maximum exponential backoff cap in seconds. |
+
+The Docker Compose stack includes Redis 7 and configures the application to use
+it automatically. For local non-container runs, use `CACHE_BACKEND=memory` or
+start Redis separately before selecting `CACHE_BACKEND=redis`.
 
 ---
 
