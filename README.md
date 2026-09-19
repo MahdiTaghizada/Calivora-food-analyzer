@@ -3,13 +3,15 @@
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)]()
-[![Tests](https://img.shields.io/badge/tests-95%20passed-success.svg)]()
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D.svg?logo=redis&logoColor=white)](https://redis.io/)
+[![Coverage](https://img.shields.io/badge/coverage-94%25-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-107%20passed-success.svg)]()
+[![Web UI](https://img.shields.io/badge/Web%20UI-Vanilla%20SPA-orange.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Calivora AI Food Analyzer** is an end-to-end nutritional analysis platform that combines state-of-the-art Vision-Language Models (VLMs), USDA FoodData Central integration, and a production-grade Software Engineering (SE) layer.
 
-Users upload a photo of any meal (JPEG/PNG). The system identifies ingredients with estimated portions, retrieves nutritional facts in parallel, calculates comprehensive macronutrient and caloric totals, logs analysis history into PostgreSQL, and surfaces the results via an asynchronous **HTTP REST API** and a **Command-Line Interface (CLI)**.
+Users upload a photo of any meal (JPEG/PNG) via a modern **Web UI (Single Page Application)**, an asynchronous **HTTP REST API**, or an interactive **Command-Line Interface (CLI)**. The system verifies image bitstreams, identifies ingredients with estimated portion weights, retrieves nutritional facts concurrently, calculates comprehensive macronutrient totals, caches results in a dual-backend cache (In-Memory / Redis), and logs audit history into PostgreSQL.
 
 ---
 
@@ -18,71 +20,78 @@ Users upload a photo of any meal (JPEG/PNG). The system identifies ingredients w
 The application is structured into two strict architectural zones: an **immutable AI foundation core** and a **robust Software Engineering orchestration layer**.
 
 ```
-                           +-------------------------------------+
-                           |            Client Layer             |
-                           |    (FastAPI HTTP / CLI Terminal)    |
-                           +------------------+------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |      Input Validation & Safety      |
-                           | (MIME, Max Size, Pillow byte check) |
-                           +------------------+------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |    Core Analyzer Orchestration      |
-                           |         (src/core/analyzer.py)      |
-                           +--------+-------------------+--------+
-                                    |                   |
-            +-----------------------+                   +-----------------------+
-            v                                                                   v
-+-----------------------+                                           +-----------------------+
-|  VLM Identification   |                                           |  Parallel Nutrition   |
-| (Anthropic / OpenAI / |                                           |        Pipeline       |
-|    Gemini / Offline)  |                                           |  (asyncio.Semaphore)  |
-+-----------+-----------+                                           +-----------+-----------+
-            |                                                                   |
-            v                                                                   v
-+-----------------------+                                           +-----------------------+
-| Exponential Backoff   |                                           |  Thread-Safe In-Memory|
-|     Retry Layer       |                                           |       TTL Cache       |
-| (tenacity decorator)  |                                           |   (24h default TTL)   |
-+-----------------------+                                           +-----------+-----------+
-                                                                                |
-                                                                                v
-                                                                    +-----------------------+
-                                                                    |  USDA FoodData Central|
-                                                                    |    REST API Client    |
-                                                                    +-----------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |    Nutrition Totals Calculation     |
-                           |   (kcal, protein, carbs, fat sums)  |
-                           +------------------+------------------+
-                                              |
-                                              v
-                           +-------------------------------------+
-                           |       PostgreSQL Persistence        |
-                           | (asyncpg connection pool & history) |
-                           +-------------------------------------+
+                           +-------------------------------------------------------------+
+                           |                     Client Presentation                     |
+                           |  [Web UI SPA (Vanilla JS)] | [FastAPI REST API] | [CLI App] |
+                           +------------------------------+------------------------------+
+                                                          |
+                                                          v
+                           +-------------------------------------------------------------+
+                           |                  Input Validation & Safety                  |
+                           |       (MIME check, 5 MB limit, Pillow bitstream verify)     |
+                           +------------------------------+------------------------------+
+                                                          |
+                                                          v
+                           +-------------------------------------------------------------+
+                           |                Core Analyzer Orchestration                  |
+                           |                   (src/core/analyzer.py)                    |
+                           +---------------+-----------------------------+---------------+
+                                           |                             |
+                   +-----------------------+                             +-----------------------+
+                   v                                                                             v
++-------------------------------------+                                       +-------------------------------------+
+|         AI Vision Pipeline          |                                       |     Parallel Nutrition Pipeline     |
+| [Google Gemini / Claude / GPT-4o]   |                                       |  (asyncio.Semaphore(10) concurrency)|
+|   [Deterministic Offline Mock Mode] |                                       +------------------+------------------+
++------------------+------------------+                                                          |
+                   |                                                                             v
+                   v                                                          +-------------------------------------+
++-------------------------------------+                                       |      Dual-Backend Cache Layer       |
+|    Tenacity Selective Resilience    |                                       | [In-Memory TTL] | [Redis 7 Alpine]  |
+| (Retries transient; skips 429/auth) |                                       +------------------+------------------+
++-------------------------------------+                                                          |
+                                                                                                 v
+                                                                              +-------------------------------------+
+                                                                              |       USDA FoodData Central API     |
+                                                                              | (Foundation & SR Legacy / kcal-kJ)  |
+                                                                              +------------------+------------------+
+                                                          |                                      |
+                                                          +-------------------+------------------+
+                                                                              |
+                                                                              v
+                                                          +-------------------------------------+
+                                                          |     Nutritional Totals Engine       |
+                                                          |  (kcal, protein, carbs, fat totals) |
+                                                          +-------------------+-----------------+
+                                                                              |
+                                                                              v
+                                                          +-------------------------------------+
+                                                          |    PostgreSQL Audit Persistence     |
+                                                          | (asyncpg connection pool & history) |
+                                                          +-------------------------------------+
 ```
 
 ---
 
 ## ✨ Core Features
 
-- **Multi-Provider Vision AI:** Supports Anthropic Claude (`claude-sonnet-4-6`), OpenAI (`gpt-4o-mini`), and Google Gemini via a unified VLM adapter interface, plus a zero-dependency offline mock mode.
-- **Parallel Nutrition Lookup:** Concurrently queries nutritional databases for $N$ identified ingredients using `asyncio.Semaphore(10)` to maximize throughput while honoring API rate limits.
-- **Thread-Safe In-Memory TTL Cache:** Caches nutritional lookups with key normalization (case-insensitive, whitespace-trimmed) to prevent redundant USDA API calls.
-- **Resilience & Fault Tolerance:** Automatic exponential backoff retries via `tenacity` on transient network and provider failures; structured graceful fallback for unrecognized meals.
-- **Strict Image Validation:** Validates MIME headers, verifies actual image bitstreams via Pillow to prevent corrupted uploads, and enforces size thresholds (default $\le$ 5MB).
-- **Asynchronous Database History:** Persists analysis records, individual ingredients with confidence scores, and macronutrient breakdowns to PostgreSQL via `asyncpg`.
-- **Dual Client Interfaces:**
-  - High-performance asynchronous **FastAPI** web service with OpenAPI/Swagger documentation.
-  - Interactive **CLI** utility (`python -m foodanalyzer`) with formatted ASCII summary tables and history inspection.
-- **Extensive Test Coverage:** 95 automated offline unit and integration tests achieving **95% code coverage**.
+- **Triple-Channel Client Surface:**
+  - Modern, responsive **Web UI (Single Page Application)** with drag-and-drop, live camera capture, dynamic macronutrient cards, ingredient tables, and real-time hero preview.
+  - Sənaye standartlı asinxron **FastAPI REST API** with OpenAPI/Swagger interactive documentation (`/docs`, `/redoc`).
+  - Terminal-based **CLI** utility (`python -m foodanalyzer`) with formatted ASCII summary tables and historical audit inspection.
+- **Dual Processing Modes (Online & Offline):**
+  - **Online Mode:** Multi-modal Vision AI supporting Google Gemini 1.5, Anthropic Claude 3.5 Sonnet, and OpenAI GPT-4o-mini paired with real-time USDA FoodData Central integration.
+  - **Offline Mode (`OFFLINE_MODE=true`):** Zero-API-key deterministic mock pipeline delivering instantaneous sub-20ms analysis for testing, demos, and air-gapped environments.
+- **Granular AI Resilience & Fault Tolerance:**
+  - Strict classification of provider errors: `ProviderRateLimitError` (HTTP 429), `ProviderUnavailableError` (HTTP 503), `ProviderAuthError` (HTTP 500), `ProviderConfigurationError` (HTTP 500).
+  - Selective `tenacity` exponential backoff retrying transient failures while bypassing quota and configuration errors.
+- **Parallel Nutrition Lookup:** Concurrently queries nutritional databases for $N$ ingredients via `asyncio.Semaphore(10)` yielding a **$5.16\times$ real wall-clock speedup**.
+- **Dual-Backend Caching Engine:**
+  - Process-local thread-safe **In-Memory TTL Cache** (`RLock`, key normalization, 24h TTL).
+  - Distributed **Redis Cache Provider** (`redis:7-alpine`, JSON serialization) with automatic factory dispatch (`src/services/cache_factory.py`).
+- **Strict Image Security & Validation:** Verifies MIME headers, enforces strict size bounds (default $\le$ 5MB), and inspects raw image bitstreams via Pillow `Image.verify()` to thwart polyglot payloads.
+- **Asynchronous PostgreSQL History:** Persists analysis records, individual ingredients with confidence scores, and macronutrient breakdowns to PostgreSQL via `asyncpg`.
+- **100% Offline Test Suite:** **107 automated unit and integration tests** achieving **94% code coverage** with zero live network calls.
 
 ---
 
