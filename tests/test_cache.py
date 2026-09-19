@@ -1,3 +1,4 @@
+import concurrent.futures
 import pytest
 from ai.schemas import NutritionFacts
 from src.services.nutrition_cache import CachedNutritionProvider
@@ -67,3 +68,42 @@ def test_cache_clear():
     cached.clear()
     cached.lookup("orange")
     assert provider.call_count == 2
+
+
+def test_key_normalization():
+    provider = CountingProvider()
+    cached = CachedNutritionProvider(provider, ttl_seconds=60)
+
+    cached.lookup("  White   Rice  ")
+    assert provider.call_count == 1
+
+    # Should hit cache because normalized key is 'white rice'
+    cached.lookup("white rice")
+    assert provider.call_count == 1
+
+    cached.lookup("WHITE RICE")
+    assert provider.call_count == 1
+
+
+def test_empty_ingredient_name_raises():
+    provider = CountingProvider()
+    cached = CachedNutritionProvider(provider, ttl_seconds=60)
+
+    with pytest.raises(ValueError, match="ingredient_name must be non-empty"):
+        cached.lookup("   ")
+
+
+def test_cache_thread_safety():
+    provider = CountingProvider()
+    cached = CachedNutritionProvider(provider, ttl_seconds=60)
+
+    def worker(name):
+        return cached.lookup(name)
+
+    names = ["chicken", "broccoli", "rice", "chicken", "broccoli"] * 10
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(worker, names))
+
+    assert len(results) == len(names)
+    # The provider should only be called once per unique key
+    assert provider.call_count == 3
