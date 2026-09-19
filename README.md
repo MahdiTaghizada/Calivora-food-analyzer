@@ -667,7 +667,7 @@ docker run -p 8000:8000 --env-file .env calivora-foodanalyzer
 
 ---
 
-## 🏛️ GitHub Repository Analysis & Engineering Contributions
+## 🏛️ GitHub Repository Analysis & Architecture Evolution
 
 The Calivora codebase has evolved through a structured, multi-branch Git workflow comprising **64 commits** across specialized feature branches:
 
@@ -691,15 +691,6 @@ The Calivora codebase has evolved through a structured, multi-branch Git workflo
 4. **`feature/se-core-and-tests`**: Built the test suite expanding to 107 hermetic tests, async pipeline benchmarks, and core documentation.
 5. **`feature/tasks-7-11`**: Implemented the CLI interface, asyncpg database repository, and history tracking.
 6. **`refactor/unify-src`**: Unified architecture under `src/` following Clean Architecture and Ports & Adapters principles.
-
-### Team Engineering Contributions
-All team members operate collaboratively as software engineers without hierarchical designations:
-
-| Engineer | Focus Areas & Architectural Deliverables |
-|---|---|
-| **Həsən Nurməmmədov** (`@nhesen`) | **Frontend & Security:** Built the interactive Web UI (Single Page Application in `frontend/`), terminal CLI interface (`src/cli.py`), database persistence save mechanisms, Pillow bitstream security validator (`src/utils/images.py`), USDA energy conversion fixes (`ai/nutrition.py`), AI provider error taxonomy (`ai/providers/google.py`, `src/api.py`), and offline mock data flow. |
-| **Mehdi Tağızadə** (`@MahdiTaghizada`) | **Core SE & Distributed Caching:** Authored foundational AI interfaces (`ai/` base), core service layer orchestration (`src/config.py`, `src/models.py`, `src/core/analyzer.py`, `src/concurrency/pipeline.py`), distributed Redis cache provider (`src/services/redis_cache.py`, `cache_factory.py`), Docker Compose configuration, and `fakeredis` test fixtures. |
-| **Bəhmən Orucov** (`@BahmanOrujov`) | **QA & Benchmarking:** Engineered the comprehensive automated test suite (107 offline tests, 94% coverage), concurrency speedup benchmarks ($5.16\times$), dual-backend cache latency benchmarks, and comprehensive technical documentation (`README.md`, setup guides, cURL recipes, CLI manual). |
 
 ---
 
