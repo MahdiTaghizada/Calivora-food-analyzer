@@ -20,7 +20,7 @@ from src.concurrency.pipeline import parallel_nutrition_lookup_with_errors
 from src.config import settings
 from src.models import AnalysisRecord, AnalysisResponse, IngredientResult
 from src.services.ai_service import identify_with_retry
-from src.services.nutrition_cache import CachedNutritionProvider
+from src.services.cache_factory import get_cached_provider
 from src.utils.images import validate_image
 
 logger = logging.getLogger(__name__)
@@ -85,11 +85,7 @@ async def analyze_meal(
         return response
 
     provider = nutrition_provider or get_nutrition_provider()
-    cached_provider = (
-        provider
-        if isinstance(provider, CachedNutritionProvider)
-        else CachedNutritionProvider(provider, settings.nutrition_cache_ttl_seconds)
-    )
+    cached_provider = get_cached_provider(provider)
     facts_by_name, errors = await parallel_nutrition_lookup_with_errors(
         ingredients,
         cached_provider,
