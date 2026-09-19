@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: ******db:5432/foodanalyzer
+      DATABASE_URL: postgresql://foodanalyzer:dev@db:5432/foodanalyzer
       CACHE_BACKEND: redis
       REDIS_URL: redis://redis:6379/0
     depends_on:

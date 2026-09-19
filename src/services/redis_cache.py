@@ -105,7 +105,11 @@ class RedisCachedNutritionProvider(NutritionProvider):
         if self._redis is not None:
             try:
                 if self._ttl > 0:
-                    self._redis.setex(key, self._ttl, self._serialize(facts))
+                    self._redis.set(
+                        key,
+                        self._serialize(facts),
+                        ex=self._ttl,
+                    )
                     logger.debug("Cached %r in Redis (TTL=%ds)", ingredient_name, self._ttl)
             except Exception:
                 logger.warning("Redis write failed for key %r", key)
