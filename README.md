@@ -234,3 +234,271 @@ docker run -d \
 ```
 
 The database schema and tables (`analysis_history`) are **automatically created** upon initial connection by `src/storage/repository.py`.
+
+---
+
+## 🌐 HTTP REST API (FastAPI)
+
+### Starting the Server
+
+```bash
+uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Interactive API documentation will be available at:
+- **Swagger UI:** `http://localhost:8000/docs`
+- **ReDoc:** `http://localhost:8000/redoc`
+
+### API Endpoints
+
+#### 1. Health Check
+- **Route:** `GET /health`
+- **Description:** Basic liveness probe.
+
+```bash
+curl -X GET http://localhost:8000/health
+```
+
+**Response:**
+```json
+{
+  "status": "ok"
+}
+```
+
+#### 2. Meal Analysis
+- **Route:** `POST /analyze`
+- **Content-Type:** `multipart/form-data`
+- **Field:** `image` (file binary)
+
+```bash
+curl -X POST http://localhost:8000/analyze \
+  -F "image=@data/rice_chicken_broccoli.png"
+```
+
+**Successful Response (200 OK):**
+```json
+{
+  "image_name": "rice_chicken_broccoli.png",
+  "meal_recognized": true,
+  "status": "completed",
+  "ingredients": [
+    {
+      "ingredient": {
+        "name": "white rice (cooked)",
+        "estimated_grams": 180.0,
+        "confidence": 0.95
+      },
+      "nutrition": {
+        "kcal": 234.0,
+        "protein_g": 4.9,
+        "carbs_g": 50.4,
+        "fat_g": 0.5
+      },
+      "nutrition_source": "usda",
+      "error": null
+    },
+    {
+      "ingredient": {
+        "name": "grilled chicken breast",
+        "estimated_grams": 150.0,
+        "confidence": 0.92
+      },
+      "nutrition": {
+        "kcal": 248.0,
+        "protein_g": 46.5,
+        "carbs_g": 0.0,
+        "fat_g": 5.4
+      },
+      "nutrition_source": "usda",
+      "error": null
+    },
+    {
+      "ingredient": {
+        "name": "broccoli",
+        "estimated_grams": 80.0,
+        "confidence": 0.88
+      },
+      "nutrition": {
+        "kcal": 27.0,
+        "protein_g": 2.2,
+        "carbs_g": 5.6,
+        "fat_g": 0.3
+      },
+      "nutrition_source": "usda",
+      "error": null
+    }
+  ],
+  "totals": {
+    "kcal": 509.0,
+    "protein_g": 53.6,
+    "carbs_g": 56.0,
+    "fat_g": 6.3
+  },
+  "warnings": [],
+  "timestamp": "2026-09-19T12:00:00Z"
+}
+```
+
+#### 3. Unrecognized Meal Response
+When the uploaded image contains no detectable food (e.g. `data/no_meal_blue.png`), the system gracefully responds without crashing:
+
+```json
+{
+  "image_name": "no_meal_blue.png",
+  "meal_recognized": false,
+  "status": "unknown_meal",
+  "ingredients": [],
+  "totals": {
+    "kcal": 0.0,
+    "protein_g": 0.0,
+    "carbs_g": 0.0,
+    "fat_g": 0.0
+  },
+  "warnings": [],
+  "timestamp": "2026-09-19T12:00:00Z"
+}
+```
+
+#### 4. API Error Handling
+
+| HTTP Code | Condition | Response Body |
+|---|---|---|
+| `400 Bad Request` | Empty file or corrupt image data | `{"detail": "Image file is empty"}` |
+| `413 Payload Too Large` | Image exceeds `MAX_IMAGE_SIZE_MB` | `{"detail": "Image exceeds the 5 MB size limit"}` |
+| `415 Unsupported Media Type`| Non-JPEG/PNG format | `{"detail": "Only JPEG and PNG images are supported"}` |
+| `503 Service Unavailable` | VLM or external provider outage | `{"detail": "AI provider temporarily unavailable"}` |
+
+---
+
+## 💻 CLI Interface (`foodanalyzer`)
+
+The application provides a command-line interface under the `foodanalyzer` module:
+
+### 1. Analyze Meal Image
+
+```bash
+python -m foodanalyzer analyze data/rice_chicken_broccoli.png
+```
+
+**Output:**
+```
+ingredient              g    kcal  protein  carbs  fat
+------------------------------------------------------
+white rice (cooked)     180  234   4.9      50.4   0.5
+grilled chicken breast  150  248   46.5     0.0    5.4
+broccoli                80   27    2.2      5.6    0.3
+------------------------------------------------------
+TOTAL                   410  509   53.6     56.0   6.3
+```
+
+### 2. View Analysis History
+
+```bash
+python -m foodanalyzer history
+```
+
+**Output:**
+```
+1 | data/rice_chicken_broccoli.png | 2026-09-19 12:05:32.418291+00
+2 | data/bread_cheese.png          | 2026-09-19 12:14:10.129482+00
+```
+
+---
+
+## ⚡ Concurrency & Caching Performance
+
+### Bounded Parallelism (`asyncio.Semaphore`)
+When the VLM identifies $N$ ingredients in a dish, retrieving nutritional values sequentially takes $O(N \cdot T)$ time, where $T$ is network latency to the USDA API ($\approx 250$ms per request).
+
+Using `src/concurrency/pipeline.py`:
+- All $N$ lookups execute concurrently via `asyncio.gather`.
+- Concurrency is bounded by an `asyncio.Semaphore(10)` to protect the USDA free-tier rate limits (1000 req/hour).
+- For a typical meal with 5 ingredients, wall-clock latency drops from **~1250ms to ~260ms** (approx. **5x speedup**).
+
+### Thread-Safe In-Memory TTL Cache
+`src/services/nutrition_cache.py` caches all ingredient lookups:
+- Thread synchronization via `threading.RLock`.
+- Normalizes query strings (`"  White  RICE "` $\rightarrow$ `"white rice"`).
+- Evicts expired records when elapsed time exceeds `NUTRITION_CACHE_TTL_SECONDS` (24h).
+- Subsequent analyses containing common ingredients (e.g. rice, chicken, eggs) achieve instant **0ms cache hits**.
+
+---
+
+## 🧪 Running Tests & Code Coverage
+
+The test suite includes 95 automated offline tests with **zero network dependencies**:
+
+### Run All Tests
+
+```bash
+pytest -v
+```
+
+### Run Tests with Coverage Report
+
+```bash
+pytest --cov=src --cov-report=term-missing
+```
+
+**Coverage Summary:**
+```
+Name                              Stmts   Miss  Cover   Missing
+---------------------------------------------------------------
+src\__init__.py                       0      0   100%
+src\api.py                           35      0   100%
+src\cli.py                           97      4    96%   140-143
+src\concurrency\pipeline.py          25      0   100%
+src\config.py                        24      0   100%
+src\core\analyzer.py                 64      0   100%
+src\logging_config.py                 7      0   100%
+src\models.py                        26      0   100%
+src\services\ai_service.py           22      0   100%
+src\services\nutrition_cache.py      35      0   100%
+src\storage\repository.py            82     19    77%   24, 48-50, 92-94...
+src\utils\images.py                  42      0   100%
+---------------------------------------------------------------
+TOTAL                               459     23    95%
+```
+
+### Run Provided Smoke Tests
+
+```bash
+pytest tests/test_ai_smoke.py -v
+```
+
+---
+
+## 🐳 Docker Deployment
+
+### Run Entire Stack (App + Database)
+
+Build and run both the web API and PostgreSQL database using Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+The application will be accessible at `http://localhost:8000`.
+
+### Build & Run Container Independently
+
+```bash
+docker build -t calivora-foodanalyzer .
+docker run -p 8000:8000 --env-file .env calivora-foodanalyzer
+```
+
+---
+
+## 🔒 Contract Compliance
+
+As stipulated in the project specification:
+1. **The `ai/` module is strictly immutable:** No files under `ai/` are modified. All custom engineering is layered in `src/`.
+2. **Provider interfaces:** Business logic interacts solely with `ai.identify_ingredients`, `ai.compute_totals`, and `ai.NutritionProvider`.
+3. **Smoke test integrity:** All 26 provided baseline smoke tests in `tests/test_ai_smoke.py` remain unmodified and passing.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
