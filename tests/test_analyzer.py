@@ -1,3 +1,4 @@
+import json
 from io import BytesIO
 from pathlib import Path
 import pytest
@@ -5,6 +6,7 @@ from PIL import Image
 
 from ai.providers.base import ProviderError
 from src.core.analyzer import analyze_meal, validate_image_path
+from src.models import AnalysisRecord
 from tests.conftest import FakeNutrition, FakeVLM
 
 
@@ -99,7 +101,6 @@ async def test_analyze_meal_provider_error(valid_meal_image, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_analyze_meal_with_nutrition_lookup_failures(valid_meal_image, fake_vlm):
-    # Fake nutrition that fails on all ingredients
     class FailingNutrition:
         def lookup(self, name: str):
             raise ProviderError(f"lookup failed for {name}")
@@ -116,3 +117,34 @@ async def test_analyze_meal_with_nutrition_lookup_failures(valid_meal_image, fak
     for ing_result in response.ingredients:
         assert ing_result.nutrition is None
         assert ing_result.error is not None
+
+
+@pytest.mark.asyncio
+async def test_analyze_meal_saves_to_repository(valid_meal_image, fake_vlm, fake_nutrition):
+    saved_records = []
+
+    class MockRepository:
+        async def save(self, record: AnalysisRecord):
+            saved_records.append(record)
+            return record
+
+    repo = MockRepository()
+    response = await analyze_meal(
+        valid_meal_image,
+        vlm=fake_vlm,
+        nutrition_provider=fake_nutrition,
+        repository=repo,
+    )
+
+    assert len(saved_records) == 1
+    record = saved_records[0]
+    assert record.image_path == valid_meal_image
+    assert record.totals_kcal == response.totals.kcal
+    assert record.totals_protein_g == response.totals.protein_g
+    assert record.totals_carbs_g == response.totals.carbs_g
+    assert record.totals_fat_g == response.totals.fat_g
+
+    # Parse saved json
+    data = json.loads(record.ingredients_json)
+    assert len(data) == 3
+    assert data[0]["ingredient"]["name"] == "white rice (cooked)"
