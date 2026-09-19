@@ -24,8 +24,12 @@ def test_normal_database_url(monkeypatch):
     assert result == "postgresql://postgres:dev@localhost:5432/foodanalyzer"
 
 
-def test_default_settings():
-    settings = Settings()
+def test_default_settings(monkeypatch):
+    monkeypatch.delenv("LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+
+    settings = Settings(_env_file=None)
+
     assert settings.llm_provider == "anthropic"
     assert settings.llm_model == "claude-sonnet-4-6"
     assert settings.nutrition_provider == "usda"
