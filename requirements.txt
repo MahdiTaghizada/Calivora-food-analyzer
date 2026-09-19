@@ -1,10 +1,17 @@
+# Core AI module requirements
 -r requirements-ai.txt
 
+# Software Engineering Layer - Core & Configuration
 pydantic-settings>=2.0
+tenacity>=8.2
+
+# Software Engineering Layer - HTTP API & Web Surface
 fastapi>=0.110
 uvicorn[standard]>=0.27
 python-multipart>=0.0.7
+
+# Software Engineering Layer - Async Storage
 asyncpg>=0.29
-tenacity>=8.2
-httpx>=0.27
-Pillow
+
+# Software Engineering Layer - Image Validation
+Pillow>=10.0
