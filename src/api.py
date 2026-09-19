@@ -11,7 +11,13 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
-from ai.providers.base import ProviderError
+from ai.providers.base import (
+    ProviderError,
+    ProviderRateLimitError,
+    ProviderUnavailableError,
+    ProviderAuthError,
+    ProviderConfigurationError,
+)
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
 from src.config import settings
@@ -64,8 +70,36 @@ async def analyze(image: UploadFile = File(...)) -> AnalysisResponse:
         return await analyze_meal(temporary_path)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+
+    except ProviderRateLimitError as exc:
+        raise HTTPException(
+            429,
+            "AI request limit reached. Please try again later or use demo mode.",
+        ) from exc
+
+    except ProviderUnavailableError as exc:
+        raise HTTPException(
+            503,
+            "AI service is temporarily busy. Please try again.",
+        ) from exc
+
+    except ProviderAuthError as exc:
+        raise HTTPException(
+            500,
+            "AI provider authentication is not configured correctly.",
+        ) from exc
+
+    except ProviderConfigurationError as exc:
+        raise HTTPException(
+            500,
+            "AI provider configuration is incomplete.",
+        ) from exc
+
     except ProviderError as exc:
-        raise HTTPException(503, "AI provider temporarily unavailable") from exc
+        raise HTTPException(
+            502,
+            "AI provider returned an unexpected error.",
+        ) from exc
     finally:
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)

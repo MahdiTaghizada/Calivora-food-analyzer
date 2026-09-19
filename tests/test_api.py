@@ -3,7 +3,7 @@ import pytest
 from PIL import Image
 from httpx import ASGITransport, AsyncClient
 
-from ai.providers.base import ProviderError
+from ai.providers.base import ProviderError, ProviderUnavailableError
 from ai.schemas import Ingredient, Nutrition
 from src.api import app
 from src.models import AnalysisResponse, IngredientResult
@@ -111,7 +111,7 @@ async def test_analyze_oversized_file():
 @pytest.mark.asyncio
 async def test_analyze_provider_error_handling(valid_png_bytes, monkeypatch):
     async def fake_failing_analyze(path, **kwargs):
-        raise ProviderError("Underlying VLM service timed out")
+        raise ProviderUnavailableError("Underlying VLM service timed out")
 
     monkeypatch.setattr("src.api.analyze_meal", fake_failing_analyze)
 
@@ -122,7 +122,7 @@ async def test_analyze_provider_error_handling(valid_png_bytes, monkeypatch):
         response = await client.post("/analyze", files=files)
 
         assert response.status_code == 503
-        assert "AI provider temporarily unavailable" in response.json()["detail"]
+        assert "AI service is temporarily busy" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

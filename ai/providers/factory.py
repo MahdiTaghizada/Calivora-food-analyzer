@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import os
 
+from src.config import settings
+
 from ai.providers.base import (
     VLMProvider,
     LLMProvider,
@@ -24,7 +26,7 @@ from ai.providers.base import (
 
 def get_llm() -> LLMProvider:
     """Return the configured text-only LLM provider."""
-    provider = os.getenv("LLM_PROVIDER", "anthropic").lower().strip()
+    provider = settings.llm_provider.lower().strip()
     if provider == "anthropic":
         from ai.providers.anthropic import AnthropicLLM
         return AnthropicLLM()
@@ -33,7 +35,10 @@ def get_llm() -> LLMProvider:
         return OpenAILLM()
     if provider in ("google", "gemini"):
         from ai.providers.google import GeminiLLM
-        return GeminiLLM()
+        return GeminiLLM(
+            model=settings.llm_model,
+            api_key=settings.google_api_key,
+        )
     raise ProviderError(
         f"Unknown LLM_PROVIDER={provider!r}. Expected anthropic | openai | gemini."
     )
@@ -41,7 +46,7 @@ def get_llm() -> LLMProvider:
 
 def get_vlm() -> VLMProvider:
     """Return the configured VLM provider."""
-    provider = os.getenv("LLM_PROVIDER", "anthropic").lower().strip()
+    provider = settings.llm_provider.lower().strip()
     if provider == "anthropic":
         from ai.providers.anthropic import AnthropicVLM
         return AnthropicVLM()
@@ -50,7 +55,10 @@ def get_vlm() -> VLMProvider:
         return OpenAIVLM()
     if provider in ("google", "gemini"):
         from ai.providers.google import GeminiVLM
-        return GeminiVLM()
+        return GeminiVLM(
+            model=settings.llm_model,
+            api_key=settings.google_api_key,
+        )
     raise ProviderError(
         f"Unknown LLM_PROVIDER={provider!r}. Expected anthropic | openai | gemini."
     )

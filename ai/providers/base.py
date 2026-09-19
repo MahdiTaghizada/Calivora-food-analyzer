@@ -87,3 +87,24 @@ class ProviderError(RuntimeError):
     The SE layer should treat this as a transient/unknown failure and decide
     whether to retry based on its own policy.
     """
+
+
+
+class ProviderRateLimitError(ProviderError):
+    """Provider quota or rate limit has been reached."""
+    pass
+
+
+class ProviderUnavailableError(ProviderError):
+    """Provider is temporarily unavailable."""
+    pass
+
+
+class ProviderAuthError(ProviderError):
+    """Provider authentication or authorization failed."""
+    pass
+
+
+class ProviderConfigurationError(ProviderError):
+    """Provider configuration is invalid or incomplete."""
+    pass

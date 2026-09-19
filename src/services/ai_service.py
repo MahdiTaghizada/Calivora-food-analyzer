@@ -7,10 +7,16 @@ from collections.abc import Callable
 from typing import ParamSpec, TypeVar
 
 from ai import Ingredient, NutritionFacts, NutritionProvider, identify_ingredients
-from ai.providers.base import ProviderError
+from ai.providers.base import (
+    ProviderError,
+    ProviderRateLimitError,
+    ProviderAuthError,
+    ProviderConfigurationError,
+)
 from tenacity import (
     before_sleep_log,
     retry,
+    retry_if_exception,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
@@ -28,9 +34,28 @@ P = ParamSpec("P")
 T = TypeVar("T")
 
 
+
+
+
+def _should_retry_provider_error(error: BaseException) -> bool:
+    """Retry temporary provider failures, but not quota/auth/config errors."""
+
+    if not isinstance(error, ProviderError):
+        return False
+
+    return not isinstance(
+        error,
+        (
+            ProviderRateLimitError,
+            ProviderAuthError,
+            ProviderConfigurationError,
+        ),
+    )
+
+
 def _retry_decorator() -> Callable[[Callable[P, T]], Callable[P, T]]:
     return retry(
-        retry=retry_if_exception_type(ProviderError),
+        retry=retry_if_exception(_should_retry_provider_error),
         stop=stop_after_attempt(settings.retry_attempts),
         wait=wait_exponential(
             multiplier=settings.retry_min_wait_seconds,

@@ -8,7 +8,16 @@ from pathlib import Path
 
 import numpy as np
 
-from ai.providers.base import VLMProvider, LLMProvider, EmbeddingProvider, ProviderError
+from ai.providers.base import (
+    VLMProvider,
+    LLMProvider,
+    EmbeddingProvider,
+    ProviderError,
+    ProviderRateLimitError,
+    ProviderUnavailableError,
+    ProviderAuthError,
+    ProviderConfigurationError,
+)
 
 
 def _make_gemini_client(api_key: str | None):
@@ -19,7 +28,7 @@ def _make_gemini_client(api_key: str | None):
         or os.getenv("LLM_API_KEY")
     )
     if not key:
-        raise ProviderError("GOOGLE_API_KEY (or LLM_API_KEY) is not set.")
+        raise ProviderConfigurationError("GOOGLE_API_KEY (or LLM_API_KEY) is not set.")
     try:
         from google import genai  # type: ignore
     except ImportError as e:
@@ -63,7 +72,7 @@ class GeminiLLM(LLMProvider):
                 ),
             )
         except Exception as e:  # pragma: no cover
-            raise ProviderError(f"Gemini call failed: {e}") from e
+            raise _translate_gemini_error(e) from e
         return (resp.text or "").strip()
 
 
@@ -107,7 +116,7 @@ class GeminiVLM(VLMProvider):
                 ),
             )
         except Exception as e:  # pragma: no cover - network path
-            raise ProviderError(f"Gemini call failed: {e}") from e
+            raise _translate_gemini_error(e) from e
         return (resp.text or "").strip()
 
 
@@ -142,3 +151,46 @@ class GeminiEmbedding(EmbeddingProvider):
         if norm == 0.0:
             raise ProviderError("Provider returned a zero vector.")
         return vec / norm
+
+
+
+def _translate_gemini_error(error: Exception) -> ProviderError:
+    """Map Gemini SDK errors to provider-specific application errors."""
+
+    message = str(error)
+    upper = message.upper()
+
+    # Quota / rate limit.
+    if "429" in upper or "RESOURCE_EXHAUSTED" in upper:
+        return ProviderRateLimitError(
+            f"Gemini quota or rate limit reached: {message}"
+        )
+
+    # Authentication / permission.
+    if (
+        "401" in upper
+        or "403" in upper
+        or "UNAUTHENTICATED" in upper
+        or "PERMISSION_DENIED" in upper
+    ):
+        return ProviderAuthError(
+            f"Gemini authentication failed: {message}"
+        )
+
+    # Temporary provider/network problems.
+    if (
+        "500" in upper
+        or "502" in upper
+        or "503" in upper
+        or "504" in upper
+        or "UNAVAILABLE" in upper
+        or "TIMEOUT" in upper
+        or "TIMED OUT" in upper
+    ):
+        return ProviderUnavailableError(
+            f"Gemini temporarily unavailable: {message}"
+        )
+
+    return ProviderError(
+        f"Gemini call failed: {message}"
+    )
