@@ -3,6 +3,7 @@ import pytest
 from PIL import Image
 from httpx import ASGITransport, AsyncClient
 
+from ai.providers.base import ProviderError
 from ai.schemas import Ingredient, Nutrition
 from src.api import app
 from src.models import AnalysisResponse, IngredientResult
@@ -68,3 +69,74 @@ async def test_analyze_endpoint_valid_image(valid_png_bytes, monkeypatch):
         assert data["status"] == "completed"
         assert len(data["ingredients"]) == 1
         assert data["totals"]["kcal"] == 17.0
+
+
+@pytest.mark.asyncio
+async def test_analyze_unsupported_content_type():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        files = {"image": ("test.txt", b"not an image", "text/plain")}
+        response = await client.post("/analyze", files=files)
+
+        assert response.status_code == 415
+        assert "Only JPEG and PNG images are supported" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_analyze_empty_file():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        files = {"image": ("empty.png", b"", "image/png")}
+        response = await client.post("/analyze", files=files)
+
+        assert response.status_code == 400
+        assert "No image was provided" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_analyze_oversized_file():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        oversized = b"a" * (6 * 1024 * 1024)
+        files = {"image": ("big.png", oversized, "image/png")}
+        response = await client.post("/analyze", files=files)
+
+        assert response.status_code == 413
+        assert "size limit" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_analyze_provider_error_handling(valid_png_bytes, monkeypatch):
+    async def fake_failing_analyze(path, **kwargs):
+        raise ProviderError("Underlying VLM service timed out")
+
+    monkeypatch.setattr("src.api.analyze_meal", fake_failing_analyze)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        files = {"image": ("meal.png", valid_png_bytes, "image/png")}
+        response = await client.post("/analyze", files=files)
+
+        assert response.status_code == 503
+        assert "AI provider temporarily unavailable" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_analyze_value_error_handling(valid_png_bytes, monkeypatch):
+    async def fake_invalid_analyze(path, **kwargs):
+        raise ValueError("Corrupted image header")
+
+    monkeypatch.setattr("src.api.analyze_meal", fake_invalid_analyze)
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        files = {"image": ("meal.png", valid_png_bytes, "image/png")}
+        response = await client.post("/analyze", files=files)
+
+        assert response.status_code == 400
+        assert "Corrupted image header" in response.json()["detail"]
