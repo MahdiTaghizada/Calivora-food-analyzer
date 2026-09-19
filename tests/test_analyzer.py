@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
+from ai.providers.base import ProviderError
 from src.core.analyzer import analyze_meal, validate_image_path
 from tests.conftest import FakeNutrition, FakeVLM
 
@@ -54,15 +55,64 @@ async def test_analyze_meal_happy_path(valid_meal_image, fake_vlm, fake_nutritio
     assert len(response.ingredients) == 3
     assert len(response.warnings) == 0
 
-    # Check that totals match expectation
     assert response.totals.kcal > 0
     assert response.totals.protein_g > 0
     assert response.totals.carbs_g > 0
     assert response.totals.fat_g > 0
 
-    # Check individual ingredient result details
     rice = response.ingredients[0]
     assert rice.ingredient.name == "white rice (cooked)"
     assert rice.nutrition is not None
     assert rice.error is None
     assert rice.nutrition_source == "fake"
+
+
+@pytest.mark.asyncio
+async def test_analyze_meal_unknown_meal(valid_meal_image, fake_nutrition):
+    empty_vlm = FakeVLM(payload={"meal_recognized": False, "ingredients": []})
+
+    response = await analyze_meal(
+        valid_meal_image,
+        vlm=empty_vlm,
+        nutrition_provider=fake_nutrition,
+    )
+
+    assert response.meal_recognized is False
+    assert response.status == "unknown_meal"
+    assert len(response.ingredients) == 0
+    assert response.totals.kcal == 0
+    assert response.totals.protein_g == 0
+    assert response.totals.carbs_g == 0
+    assert response.totals.fat_g == 0
+
+
+@pytest.mark.asyncio
+async def test_analyze_meal_provider_error(valid_meal_image, monkeypatch):
+    def fake_identify_failing(*args, **kwargs):
+        raise ProviderError("VLM rate limit exceeded")
+
+    monkeypatch.setattr("src.core.analyzer.identify_with_retry", fake_identify_failing)
+
+    with pytest.raises(ProviderError, match="VLM rate limit exceeded"):
+        await analyze_meal(valid_meal_image)
+
+
+@pytest.mark.asyncio
+async def test_analyze_meal_with_nutrition_lookup_failures(valid_meal_image, fake_vlm):
+    # Fake nutrition that fails on all ingredients
+    class FailingNutrition:
+        def lookup(self, name: str):
+            raise ProviderError(f"lookup failed for {name}")
+
+    response = await analyze_meal(
+        valid_meal_image,
+        vlm=fake_vlm,
+        nutrition_provider=FailingNutrition(),
+    )
+
+    assert response.meal_recognized is True
+    assert response.status == "completed_with_warnings"
+    assert len(response.warnings) == 3
+    for ing_result in response.ingredients:
+        assert ing_result.nutrition is None
+        assert ing_result.error is not None
