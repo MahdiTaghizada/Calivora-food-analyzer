@@ -45,6 +45,53 @@ def _retry_decorator() -> Callable[[Callable[P, T]], Callable[P, T]]:
 @_retry_decorator()
 def identify_with_retry(image_path: str, **kwargs: object) -> list[Ingredient]:
     logger.info("Identifying ingredients in %s", image_path)
+
+    if settings.offline_mode:
+        logger.info("OFFLINE_MODE enabled - using deterministic demo ingredients")
+
+        return [
+            Ingredient(
+                name="sesame hamburger bun",
+                estimated_grams=180.0,
+                confidence=0.90,
+            ),
+            Ingredient(
+                name="crispy chicken patty",
+                estimated_grams=270.0,
+                confidence=0.85,
+            ),
+            Ingredient(
+                name="green leaf lettuce",
+                estimated_grams=30.0,
+                confidence=0.90,
+            ),
+            Ingredient(
+                name="french fries",
+                estimated_grams=100.0,
+                confidence=0.90,
+            ),
+            Ingredient(
+                name="ketchup",
+                estimated_grams=30.0,
+                confidence=0.85,
+            ),
+            Ingredient(
+                name="burger sauce",
+                estimated_grams=25.0,
+                confidence=0.80,
+            ),
+            Ingredient(
+                name="pickled peppers",
+                estimated_grams=20.0,
+                confidence=0.85,
+            ),
+            Ingredient(
+                name="mixed pickled vegetables",
+                estimated_grams=40.0,
+                confidence=0.80,
+            ),
+        ]
+
     return identify_ingredients(image_path, **kwargs)
 
 

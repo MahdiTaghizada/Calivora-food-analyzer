@@ -5,6 +5,12 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
+from dotenv import load_dotenv
+
+# Load .env values into os.environ
+load_dotenv(override=True)
+
+
 from ai.providers.base import ProviderError
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
@@ -12,7 +18,25 @@ from src.config import settings
 from src.core.analyzer import analyze_meal
 from src.models import AnalysisResponse
 
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(title="Calivora AI Food Analyzer", version="1.0.0")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+FRONTEND_DIR = BASE_DIR / "frontend"
+
+app.mount(
+    "/static",
+    StaticFiles(directory=FRONTEND_DIR),
+    name="static",
+)
+
+
+@app.get("/", include_in_schema=False)
+async def ui_home():
+    return FileResponse(FRONTEND_DIR / "index.html")
+
 
 
 @app.get("/health")

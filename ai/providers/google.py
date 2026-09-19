@@ -102,6 +102,8 @@ class GeminiVLM(VLMProvider):
                 contents=[uploaded, full_prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json" if json_schema else None,
+                    temperature=0,
+                    seed=42,
                 ),
             )
         except Exception as e:  # pragma: no cover - network path
