@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     retry_attempts: int = 3
     retry_min_wait_seconds: float = 1.0
     retry_max_wait_seconds: float = 10.0
+    cache_backend: str = "memory"
+    redis_url: str = "redis://localhost:6379/0"
 
     model_config = SettingsConfigDict(
         env_file=".env",
