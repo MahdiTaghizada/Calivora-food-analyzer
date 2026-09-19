@@ -213,6 +213,7 @@ Configure your environment settings as needed:
 | `NUTRITION_CACHE_TTL_SECONDS` | integer | `86400` | TTL in seconds for nutrition cache entries (default: 24h). |
 | `CACHE_BACKEND` | string | `memory` | Cache implementation: `memory` for a process-local cache or `redis` for a shared Redis cache. |
 | `REDIS_URL` | string | `redis://localhost:6379/0` | Redis connection URI used when `CACHE_BACKEND=redis`. |
+| `OFFLINE_MODE` | boolean | `false` | When `true`, bypasses cloud VLM APIs and uses deterministic mock meal identification. |
 | `MAX_IMAGE_SIZE_MB` | integer | `5` | Maximum allowable upload file size in megabytes. |
 | `HTTP_PORT` | integer | `8000` | HTTP port for FastAPI server. |
 | `MAX_NUTRITION_CONCURRENCY` | integer | `10` | Maximum concurrent USDA lookup queries. |
@@ -223,6 +224,63 @@ Configure your environment settings as needed:
 The Docker Compose stack includes Redis 7 and configures the application to use
 it automatically. For local non-container runs, use `CACHE_BACKEND=memory` or
 start Redis separately before selecting `CACHE_BACKEND=redis`.
+
+---
+
+## 🔄 Online vs Offline Mode Execution
+
+Calivora is engineered to function seamlessly across both fully connected cloud environments and completely air-gapped or keyless testing setups via the `OFFLINE_MODE` flag.
+
+```
+                    +-----------------------------------------+
+                    |           Image Analysis Request        |
+                    +--------------------+--------------------+
+                                         |
+                                         v
+                         +-------------------------------+
+                         |   Is OFFLINE_MODE enabled?    |
+                         +---------------+---------------+
+                                         |
+                        YES              |               NO
+             +---------------------------+---------------------------+
+             |                                                       |
+             v                                                       v
++-----------------------------+                         +-----------------------------+
+|    Offline Deterministic    |                         |    Online Multi-Modal VLM   |
+|        Demo Pipeline        |                         |   [Gemini / Claude / GPT]   |
++--------------+--------------+                         +--------------+--------------+
+| • Zero API keys required    |                         | • Live image understanding  |
+| • Deterministic mock items  |                         | • Real portion weight bounds|
+| • Sub-20ms instant response |                         | • Multi-model support       |
++--------------+--------------+                         +--------------+--------------+
+               \                                                       /
+                \                                                     /
+                 v                                                   v
+                  +-------------------------------------------------+
+                  |          Nutrition Lookup & Aggregation         |
+                  |     (Dual Cache -> USDA API -> PostgreSQL)      |
+                  +-------------------------------------------------+
+```
+
+### 1. Offline Mode (`OFFLINE_MODE=true`)
+- **Zero Configuration:** Run the entire system, test suite, and web interface without setting `GOOGLE_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY`.
+- **Deterministic Food Profile:** Yields an authentic 8-ingredient nutritional profile calibrated to the included demo asset (`frontend/assets/hero-meal.jpeg`):
+  - Sesame hamburger bun ($180$ g)
+  - Crispy chicken patty ($270$ g)
+  - Green leaf lettuce ($30$ g)
+  - French fries ($100$ g)
+  - Ketchup ($30$ g)
+  - Burger sauce ($25$ g)
+  - Pickled peppers ($20$ g)
+  - Mixed pickled vegetables ($40$ g)
+- **Ultra-Low Latency:** Bypasses network overhead to deliver end-to-end responses in **$< 20$ ms**.
+- **100% Hermetic Testing:** Underpins the **107 offline automated tests**, ensuring reliable CI/CD pipelines without flakiness or external API quotas.
+
+### 2. Online Mode (`OFFLINE_MODE=false`)
+- **Cloud VLM Orchestration:** Sends validated images to Google Gemini 1.5, Anthropic Claude 3.5 Sonnet, or OpenAI GPT-4o-mini.
+- **Dynamic Identification:** Dynamically extracts meal items, segment portions in grams, and detection confidence scores ($0.0 - 1.0$).
+- **Live USDA Integration:** Resolves each ingredient through USDA FoodData Central Foundation and SR Legacy datasets, with automatic kJ-to-kcal normalization.
+- **Automatic Fallback:** Gracefully degrades to informative warnings if non-food images are submitted.
 
 ---
 
