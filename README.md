@@ -466,12 +466,65 @@ When the uploaded image contains no detectable food (e.g. `data/no_meal_blue.png
 
 #### 4. API Error Handling
 
-| HTTP Code | Condition | Response Body |
-|---|---|---|
-| `400 Bad Request` | Empty file or corrupt image data | `{"detail": "Image file is empty"}` |
-| `413 Payload Too Large` | Image exceeds `MAX_IMAGE_SIZE_MB` | `{"detail": "Image exceeds the 5 MB size limit"}` |
-| `415 Unsupported Media Type`| Non-JPEG/PNG format | `{"detail": "Only JPEG and PNG images are supported"}` |
-| `503 Service Unavailable` | VLM or external provider outage | `{"detail": "AI provider temporarily unavailable"}` |
+The API translates domain exceptions into precise, standards-compliant HTTP status codes:
+
+| HTTP Code | Condition / Exception | Response Body Detail | Client Guidance |
+|---|---|---|---|
+| `400 Bad Request` | Corrupt or empty image | `{"detail": "Image file is empty"}` | Check file data integrity. |
+| `413 Payload Too Large` | Image exceeds `MAX_IMAGE_SIZE_MB` | `{"detail": "Image exceeds the 5 MB size limit"}` | Compress or resize photo. |
+| `415 Unsupported Media Type` | Non-JPEG/PNG format | `{"detail": "Only JPEG and PNG images are supported"}` | Submit standard `.jpg` or `.png`. |
+| `429 Too Many Requests` | `ProviderRateLimitError` | `{"detail": "AI request limit reached. Please try again later or use demo mode."}` | Switch to `OFFLINE_MODE=true` or wait. |
+| `500 Internal Server Error` | `ProviderAuthError` / `ProviderConfigurationError` | `{"detail": "AI provider authentication is not configured correctly."}` | Verify API key and environment config. |
+| `502 Bad Gateway` | `ProviderError` | `{"detail": "AI provider returned an unexpected error."}` | Upstream provider protocol error. |
+| `503 Service Unavailable` | `ProviderUnavailableError` | `{"detail": "AI service is temporarily busy. Please try again."}` | Transient outage; retries exhausted. |
+
+---
+
+## 🧠 End-to-End AI Pipeline & Resilience
+
+Calivora implements an asynchronous, staged analysis pipeline designed for maximum data integrity, non-blocking concurrency, and resilient fault isolation.
+
+```
+[User Image]
+     │
+     ▼
+[Stage 1: Byte-Level Security & Bitstream Validation]
+     │  • Validates MIME header (JPEG/PNG)
+     │  • Enforces MAX_IMAGE_SIZE_MB (5 MB cap)
+     │  • Pillow Image.verify() parses binary image structure
+     │
+     ▼
+[Stage 2: Vision-Language Model Orchestration]
+     │  • If OFFLINE_MODE=true: Emits deterministic 8-ingredient demo profile
+     │  • If OFFLINE_MODE=false: Translates image into structured JSON prompt
+     │  • Extracts ingredient names, gram estimates, and confidence scores
+     │  • Selective Tenacity Retries (exponential backoff: 1s to 10s)
+     │  • Granular error mapping: RateLimit (429), Unavailable (503), Auth (500)
+     │
+     ▼
+[Stage 3: Concurrency-Bounded Nutrition Pipeline]
+     │  • asyncio.gather concurrent resolution across all N ingredients
+     │  • asyncio.Semaphore(10) bounds concurrency to respect USDA rate limits
+     │
+     ▼
+[Stage 4: Dual-Backend Caching Engine]
+     │  • In-Memory TTL Cache (RLock thread safety, 24h expiration)
+     │  • Distributed Redis Provider (redis:7-alpine with JSON serialization)
+     │  • Graceful fallback to upstream provider upon cache outage
+     │
+     ▼
+[Stage 5: USDA FoodData Central Normalization]
+     │  • Foundation and SR Legacy food search
+     │  • Smart energy resolution (direct KCAL preferred; kJ converted via / 4.184)
+     │
+     ▼
+[Stage 6: Aggregation & PostgreSQL Persistence]
+     │  • Calculates total kcal, protein_g, carbs_g, fat_g
+     │  • Asynchronously records entry in PostgreSQL analysis_history table
+     │
+     ▼
+[Client Response (Web SPA / REST JSON / Terminal Table)]
+```
 
 ---
 
