@@ -59,7 +59,7 @@ class PostgresAnalysisRepository:
                         id SERIAL PRIMARY KEY,
                         image_path TEXT NOT NULL,
                         result TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
                         ingredients_json TEXT,
                         totals_kcal DOUBLE PRECISION,
                         totals_protein_g DOUBLE PRECISION,
@@ -71,6 +71,12 @@ class PostgresAnalysisRepository:
                 await connection.execute("""
                     ALTER TABLE analysis_history
                     ALTER COLUMN result DROP NOT NULL
+                """)
+
+                await connection.execute("""
+                    ALTER TABLE analysis_history
+                    ALTER COLUMN created_at TYPE TIMESTAMPTZ
+                    USING created_at AT TIME ZONE current_setting('TIMEZONE')
                 """)
 
                 await connection.execute("""

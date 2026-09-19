@@ -46,7 +46,7 @@ def test_create_table():
 
     asyncio.run(repo.create_table())
 
-    assert len(queries)==3
+    assert len(queries)==4
     assert "CREATE TABLE IF NOT EXISTS analysis_history" in queries[0]
     assert "ingredients_json" in queries[0]
 

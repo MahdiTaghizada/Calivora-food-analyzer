@@ -36,10 +36,6 @@ def test_file_not_found(monkeypatch, capsys):
 def test_valid_image(monkeypatch,capsys):
     from src import cli
 
-    class FakeResponse:
-        def model_dump_json(self,indent=2):
-            return '{"image_name":"bread_cheese.png"}'
-
     class FakeRepository:
         async def init_pool(self):
             pass
@@ -51,7 +47,7 @@ def test_valid_image(monkeypatch,capsys):
             pass
 
     async def fake_analyze_meal(path,repository=None):
-        return FakeResponse()
+        return object()
 
     monkeypatch.setattr(
         cli,
@@ -66,6 +62,12 @@ def test_valid_image(monkeypatch,capsys):
     )
 
     monkeypatch.setattr(
+        cli,
+        "render_table",
+        lambda response: "ingredient  g  kcal\nTOTAL       90  280"
+    )
+
+    monkeypatch.setattr(
         sys,
         "argv",
         ["foodanalyzer","analyze","data/bread_cheese.png"]
@@ -75,7 +77,8 @@ def test_valid_image(monkeypatch,capsys):
 
     output=capsys.readouterr()
 
-    assert "bread_cheese.png" in output.out
+    assert "TOTAL" in output.out
+    assert "280" in output.out
 
 
 def test_directory_path(monkeypatch, capsys):

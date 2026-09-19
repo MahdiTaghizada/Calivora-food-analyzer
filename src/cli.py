@@ -4,6 +4,8 @@ import mimetypes
 import logging
 import asyncio
 
+from ai.providers.base import ProviderError
+
 
 from src.core.analyzer import analyze_meal
 from src.utils.images import validate_image,ImageValidationError
@@ -13,6 +15,57 @@ from src.storage.repository import PostgresAnalysisRepository
 
 
 logger=logging.getLogger(__name__)
+
+
+def render_table(response):
+    headers=("ingredient","g","kcal","protein","carbs","fat")
+    rows=[]
+
+    for item in response.ingredients:
+        if item.nutrition is None:
+            continue
+
+        rows.append((
+            item.ingredient.name,
+            f"{item.ingredient.estimated_grams:.0f}",
+            f"{item.nutrition.kcal:.0f}",
+            f"{item.nutrition.protein_g:.1f}",
+            f"{item.nutrition.carbs_g:.1f}",
+            f"{item.nutrition.fat_g:.1f}"
+        ))
+
+    totals=response.totals
+
+    rows.append((
+        "TOTAL",
+        f"{sum(item.ingredient.estimated_grams for item in response.ingredients):.0f}",
+        f"{totals.kcal:.0f}",
+        f"{totals.protein_g:.1f}",
+        f"{totals.carbs_g:.1f}",
+        f"{totals.fat_g:.1f}"
+    ))
+
+    widths=[
+        max(len(headers[i]),max(len(row[i]) for row in rows))
+        for i in range(len(headers))
+    ]
+
+    def format_row(row):
+        return "  ".join(
+            value.ljust(widths[i])
+            for i,value in enumerate(row)
+        )
+
+    output=[format_row(headers)]
+    output.append("-"*(sum(widths)+2*(len(widths)-1)))
+
+    for row in rows[:-1]:
+        output.append(format_row(row))
+
+    output.append("-"*(sum(widths)+2*(len(widths)-1)))
+    output.append(format_row(rows[-1]))
+
+    return "\n".join(output)
 
 
 async def show_history():
@@ -47,10 +100,6 @@ def main():
     command=sys.argv[1]
 
     if command=="history":
-        if not os.getenv("DATABASE_URL"):
-            print("DATABASE_URL is not set")
-            sys.exit(1)
-
         asyncio.run(show_history())
         return
 
@@ -111,9 +160,13 @@ def main():
         finally:
             await repository.close_pool()
 
-    response=asyncio.run(run_analysis())
-    result=response.model_dump_json(indent=2)
+    try:
+        response=asyncio.run(run_analysis())
+    except ProviderError as error:
+        logger.error(f"AI provider error: {error}")
+        print("AI provider is not configured")
+        sys.exit(1)
 
-    print(result)
+    print(render_table(response))
 
     logger.info(f"Analysis completed: {path}")
