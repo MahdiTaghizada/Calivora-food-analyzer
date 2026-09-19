@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     usda_api_key: str = ""
 
     log_level: str = "INFO"
+    offline_mode: bool = False
     database_url: str = "postgresql+asyncpg://foodanalyzer:dev@localhost:5432/foodanalyzer"
     nutrition_cache_ttl_seconds: int = 86400
     max_image_size_mb: int = 5
