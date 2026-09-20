@@ -2,22 +2,23 @@
 
 ## Azure AKS deployment
 
-The `infrastructure` branch contains a complete Terraform-managed Azure
-deployment: resource group, VNet/subnet, autoscaling AKS, ACR, remote state in
+The [`infrastructure/`](C:/Users/tagiz/Desktop/Calivora-food-analyzer/infrastructure/)
+directory contains a complete Terraform-managed Azure deployment: resource group,
+VNet/subnet, autoscaling AKS, ACR, remote state in
 Azure Storage, NGINX LoadBalancer ingress, PostgreSQL, Redis, Prometheus, and
 Grafana. The application is built from this repository and pushed to ACR by
 the deployment wrapper.
 
 1. Install Terraform, Azure CLI, kubectl, and Docker. Authenticate the Azure
    CLI with an account that can create resource groups and role assignments.
-2. Copy `terraform/terraform.tfvars.example` to
-   `terraform/terraform.tfvars`, and copy
-   `terraform/bootstrap/terraform.tfvars.example` to
-   `terraform/bootstrap/terraform.tfvars`. Fill in the same Azure service
+2. Copy `infrastructure/terraform/terraform.tfvars.example` to
+   `infrastructure/terraform/terraform.tfvars`, and copy
+   `infrastructure/terraform/bootstrap/terraform.tfvars.example` to
+   `infrastructure/terraform/bootstrap/terraform.tfvars`. Fill in the same Azure service
    principal values in both files. Never commit either real file.
 3. Run one command from the repository root:
-   - macOS/Linux/WSL: `bash deploy.sh`
-   - Windows PowerShell: `.\deploy.ps1`
+   - macOS/Linux/WSL: `bash infrastructure/deploy.sh`
+   - Windows PowerShell: `.\infrastructure\deploy.ps1`
 
 The wrapper bootstraps the encrypted remote state account, creates ACR,
 builds/pushes the image, applies all Azure and Kubernetes resources, installs

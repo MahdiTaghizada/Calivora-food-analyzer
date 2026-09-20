@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
-$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Tf = Join-Path $Root "terraform"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Root = Split-Path -Parent $ScriptDir
+$Tf = Join-Path $ScriptDir "terraform"
 $Bootstrap = Join-Path $Tf "bootstrap"
 
 foreach ($tool in @("terraform", "az", "kubectl", "docker")) {
@@ -9,10 +10,10 @@ foreach ($tool in @("terraform", "az", "kubectl", "docker")) {
     }
 }
 if (-not (Test-Path (Join-Path $Tf "terraform.tfvars"))) {
-    throw "Copy terraform\terraform.tfvars.example to terraform\terraform.tfvars and fill it in."
+    throw "Copy infrastructure\terraform\terraform.tfvars.example to infrastructure\terraform\terraform.tfvars and fill it in."
 }
 if (-not (Test-Path (Join-Path $Bootstrap "terraform.tfvars"))) {
-    throw "Copy terraform\bootstrap\terraform.tfvars.example to terraform\bootstrap\terraform.tfvars and fill it in."
+    throw "Copy infrastructure\terraform\bootstrap\terraform.tfvars.example to infrastructure\terraform\bootstrap\terraform.tfvars and fill it in."
 }
 
 terraform -chdir=$Bootstrap init -input=false

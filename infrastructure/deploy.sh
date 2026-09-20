@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TF_DIR="$ROOT_DIR/terraform"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+TF_DIR="$SCRIPT_DIR/terraform"
 BOOTSTRAP_DIR="$TF_DIR/bootstrap"
 
 command -v terraform >/dev/null || { echo "terraform is required."; exit 1; }
@@ -11,11 +12,11 @@ command -v kubectl >/dev/null || { echo "kubectl is required."; exit 1; }
 command -v docker >/dev/null || { echo "Docker is required to build the API image."; exit 1; }
 
 test -f "$TF_DIR/terraform.tfvars" || {
-  echo "Copy terraform/terraform.tfvars.example to terraform/terraform.tfvars and fill it in."
+  echo "Copy infrastructure/terraform/terraform.tfvars.example to infrastructure/terraform/terraform.tfvars and fill it in."
   exit 1
 }
 test -f "$BOOTSTRAP_DIR/terraform.tfvars" || {
-  echo "Copy terraform/bootstrap/terraform.tfvars.example to terraform/bootstrap/terraform.tfvars and fill it in."
+  echo "Copy infrastructure/terraform/bootstrap/terraform.tfvars.example to infrastructure/terraform/bootstrap/terraform.tfvars and fill it in."
   exit 1
 }
 

@@ -19,11 +19,11 @@ jobs:
         with:
           terraform_version: 1.14.2
       - name: Terraform format check
-        run: terraform fmt -check -recursive terraform
+        run: terraform fmt -check -recursive infrastructure/terraform
       - name: Bootstrap validation
-        run: terraform -chdir=terraform/bootstrap init -backend=false -input=false && terraform -chdir=terraform/bootstrap validate
+        run: terraform -chdir=infrastructure/terraform/bootstrap init -backend=false -input=false && terraform -chdir=infrastructure/terraform/bootstrap validate
       - name: Infrastructure validation
-        run: terraform -chdir=terraform init -backend=false -input=false && terraform -chdir=terraform validate
+        run: terraform -chdir=infrastructure/terraform init -backend=false -input=false && terraform -chdir=infrastructure/terraform validate
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
