@@ -1,0 +1,20 @@
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+tenant_id            = "00000000-0000-0000-0000-000000000000"
+client_id            = "00000000-0000-0000-0000-000000000000"
+client_secret        = "replace-me"
+
+location             = "westeurope"
+project_name         = "calivora"
+environment          = "prod"
+
+# Set this after pushing the image to ACR, or let deploy.sh build and push it.
+app_image            = ""
+
+# Use offline_mode=true when no external AI credentials are available.
+offline_mode         = true
+llm_provider         = "anthropic"
+llm_model            = "claude-sonnet-4-6"
+anthropic_api_key    = ""
+openai_api_key       = ""
+google_api_key       = ""
+usda_api_key         = ""
