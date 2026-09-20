@@ -8,6 +8,7 @@ client_secret       = null
 location             = "westeurope"
 project_name         = "calivora"
 environment          = "prod"
+node_vm_size         = "Standard_E2ads_v7"
 
 # Set this after pushing the image to ACR, or let deploy.sh build and push it.
 app_image            = ""

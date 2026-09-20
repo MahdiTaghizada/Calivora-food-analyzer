@@ -54,7 +54,7 @@ variable "kubernetes_version" {
 variable "node_vm_size" {
   description = "AKS system node VM size."
   type        = string
-  default     = "Standard_D4s_v5"
+  default     = "Standard_E2ads_v7"
 }
 
 variable "node_min_count" {
