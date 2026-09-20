@@ -47,7 +47,7 @@ terraform {
 }
 "@ | Set-Content (Join-Path $Tf "backend.tf")
 
-Invoke-Terraform $Tf @("init", "-upgrade", "-input=false")
+Invoke-Terraform $Tf @("init", "-upgrade", "-reconfigure", "-input=false")
 Invoke-Terraform $Tf @("apply", "-target=module.resource_group", "-target=module.acr", "-auto-approve", "-input=false", "-var-file=terraform.tfvars")
 $AcrLoginServer = & terraform "-chdir=$Tf" output -raw acr_login_server
 az acr login --name ($AcrLoginServer -split "\.")[0]
