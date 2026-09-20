@@ -2,24 +2,28 @@ variable "subscription_id" {
   description = "Azure subscription ID."
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "tenant_id" {
   description = "Microsoft Entra tenant ID."
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "client_id" {
   description = "Service principal application/client ID."
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "client_secret" {
   description = "Service principal client secret."
   type        = string
   sensitive   = true
+  default     = null
 }
 
 variable "location" {

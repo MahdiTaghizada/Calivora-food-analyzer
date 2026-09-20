@@ -1,7 +1,9 @@
-subscription_id     = "00000000-0000-0000-0000-000000000000"
-tenant_id            = "00000000-0000-0000-0000-000000000000"
-client_id            = "00000000-0000-0000-0000-000000000000"
-client_secret        = "replace-me"
+# Terraform uses the currently selected Azure CLI subscription after `az login`.
+# These optional values can be left null unless a service-principal workflow is used.
+subscription_id     = null
+tenant_id           = null
+client_id           = null
+client_secret       = null
 
 location             = "westeurope"
 project_name         = "calivora"
@@ -10,10 +12,10 @@ environment          = "prod"
 # Set this after pushing the image to ACR, or let deploy.sh build and push it.
 app_image            = ""
 
-# Use offline_mode=true when no external AI credentials are available.
-offline_mode         = true
-llm_provider         = "anthropic"
-llm_model            = "claude-sonnet-4-6"
+# Real provider test; add the newly rotated keys locally below.
+offline_mode         = false
+llm_provider         = "gemini"
+llm_model            = "gemini-3.6-flash"
 anthropic_api_key    = ""
 openai_api_key       = ""
 google_api_key       = ""

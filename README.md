@@ -11,12 +11,19 @@ the deployment wrapper.
 
 1. Install Terraform, Azure CLI, kubectl, and Docker. Authenticate the Azure
    CLI with an account that can create resource groups and role assignments.
-2. Copy `infrastructure/terraform/terraform.tfvars.example` to
+2. Run `az login` and select the target subscription with `az account set`.
+   Terraform uses the Azure CLI credential automatically; service-principal
+   fields in the example files may remain `null`.
+3. Copy `infrastructure/terraform/terraform.tfvars.example` to
    `infrastructure/terraform/terraform.tfvars`, and copy
    `infrastructure/terraform/bootstrap/terraform.tfvars.example` to
    `infrastructure/terraform/bootstrap/terraform.tfvars`. Fill in the same Azure service
    principal values in both files. Never commit either real file.
-3. Run one command from the repository root:
+4. Set `offline_mode = false`, `llm_provider = "gemini"` and
+   `llm_model = "gemini-3.6-flash"` in the local tfvars file. Put newly rotated
+   `google_api_key` and `usda_api_key` values there locally; never send or
+   commit them.
+5. Run one command from the repository root:
    - macOS/Linux/WSL: `bash infrastructure/deploy.sh`
    - Windows PowerShell: `.\infrastructure\deploy.ps1`
 
