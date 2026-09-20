@@ -1,5 +1,29 @@
 # 🥗 Calivora AI Food Analyzer
 
+## Azure AKS deployment
+
+The `infrastructure` branch contains a complete Terraform-managed Azure
+deployment: resource group, VNet/subnet, autoscaling AKS, ACR, remote state in
+Azure Storage, NGINX LoadBalancer ingress, PostgreSQL, Redis, Prometheus, and
+Grafana. The application is built from this repository and pushed to ACR by
+the deployment wrapper.
+
+1. Install Terraform, Azure CLI, kubectl, and Docker. Authenticate the Azure
+   CLI with an account that can create resource groups and role assignments.
+2. Copy `terraform/terraform.tfvars.example` to
+   `terraform/terraform.tfvars`, and copy
+   `terraform/bootstrap/terraform.tfvars.example` to
+   `terraform/bootstrap/terraform.tfvars`. Fill in the same Azure service
+   principal values in both files. Never commit either real file.
+3. Run one command from the repository root:
+   - macOS/Linux/WSL: `bash deploy.sh`
+   - Windows PowerShell: `.\deploy.ps1`
+
+The wrapper bootstraps the encrypted remote state account, creates ACR,
+builds/pushes the image, applies all Azure and Kubernetes resources, installs
+the Helm monitoring stack, retrieves kubeconfig, and waits for the API rollout.
+No manually authored Kubernetes secret or manifest is required.
+
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)

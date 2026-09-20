@@ -1,0 +1,33 @@
+name: Terraform and application validation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - infrastructure
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.2
+      - name: Terraform format check
+        run: terraform fmt -check -recursive terraform
+      - name: Bootstrap validation
+        run: terraform -chdir=terraform/bootstrap init -backend=false -input=false && terraform -chdir=terraform/bootstrap validate
+      - name: Infrastructure validation
+        run: terraform -chdir=terraform init -backend=false -input=false && terraform -chdir=terraform validate
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run tests
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pytest -q

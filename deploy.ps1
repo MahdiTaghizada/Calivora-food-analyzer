@@ -1,0 +1,49 @@
+$ErrorActionPreference = "Stop"
+$Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$Tf = Join-Path $Root "terraform"
+$Bootstrap = Join-Path $Tf "bootstrap"
+
+foreach ($tool in @("terraform", "az", "kubectl", "docker")) {
+    if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+        throw "$tool is required and was not found on PATH."
+    }
+}
+if (-not (Test-Path (Join-Path $Tf "terraform.tfvars"))) {
+    throw "Copy terraform\terraform.tfvars.example to terraform\terraform.tfvars and fill it in."
+}
+if (-not (Test-Path (Join-Path $Bootstrap "terraform.tfvars"))) {
+    throw "Copy terraform\bootstrap\terraform.tfvars.example to terraform\bootstrap\terraform.tfvars and fill it in."
+}
+
+terraform -chdir=$Bootstrap init -input=false
+terraform -chdir=$Bootstrap apply -auto-approve -input=false -var-file=terraform.tfvars
+$StateRg = terraform -chdir=$Bootstrap output -raw resource_group_name
+$StateStorage = terraform -chdir=$Bootstrap output -raw storage_account_name
+$StateContainer = terraform -chdir=$Bootstrap output -raw container_name
+
+@"
+terraform {
+  backend "azurerm" {
+    resource_group_name  = "$StateRg"
+    storage_account_name = "$StateStorage"
+    container_name       = "$StateContainer"
+    key                  = "calivora.tfstate"
+  }
+}
+"@ | Set-Content (Join-Path $Tf "backend.tf")
+
+terraform -chdir=$Tf init -upgrade -input=false
+terraform -chdir=$Tf apply -target=module.resource_group -target=module.acr -auto-approve -input=false -var-file=terraform.tfvars
+$AcrLoginServer = terraform -chdir=$Tf output -raw acr_login_server
+az acr login --name ($AcrLoginServer -split "\.")[0]
+docker build -t "$AcrLoginServer/calivora:latest" $Root
+docker push "$AcrLoginServer/calivora:latest"
+terraform -chdir=$Tf apply -auto-approve -input=false -var-file=terraform.tfvars
+
+$AksName = terraform -chdir=$Tf output -raw aks_name
+$AksRg = terraform -chdir=$Tf output -raw resource_group_name
+az aks get-credentials --resource-group $AksRg --name $AksName --overwrite-existing
+kubectl -n calivora rollout status deployment/calivora-api --timeout=10m
+Write-Host "Deployment complete."
+Write-Host "Ingress IP: $(terraform -chdir=$Tf output -raw ingress_ip)"
+Write-Host "Grafana:    $(terraform -chdir=$Tf output -raw grafana_url)"
