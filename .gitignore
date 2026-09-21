@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 .venv/
 __pycache__/
 *.py[cod]
@@ -8,3 +10,12 @@ htmlcov/
 .vs/
 .vscode/
 uploads/
+infrastructure/terraform/*.tfvars
+!infrastructure/terraform/terraform.tfvars.example
+infrastructure/terraform/*.tfstate*
+infrastructure/terraform/.terraform/
+infrastructure/terraform/backend.tf
+infrastructure/terraform/bootstrap/*.tfvars
+infrastructure/terraform/bootstrap/*.tfstate*
+infrastructure/terraform/bootstrap/.terraform/
+kubeconfig

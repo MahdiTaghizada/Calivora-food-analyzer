@@ -1,0 +1,5 @@
+# deploy.sh creates the real backend configuration after bootstrapping the state
+# resource group and storage account. Do not put credentials in this file.
+terraform {
+  backend "azurerm" {}
+}

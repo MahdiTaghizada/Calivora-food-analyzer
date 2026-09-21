@@ -1,0 +1,7 @@
+subscription_id = null
+tenant_id       = null
+client_id       = null
+client_secret   = null
+location        = "westeurope"
+project_name    = "calivora"
+environment     = "prod"

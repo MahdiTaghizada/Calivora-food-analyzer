@@ -1,5 +1,37 @@
 # 🥗 Calivora AI Food Analyzer
 
+## Azure AKS deployment
+
+The [`infrastructure/`](C:/Users/tagiz/Desktop/Calivora-food-analyzer/infrastructure/)
+directory contains a complete Terraform-managed Azure deployment: resource group,
+VNet/subnet, autoscaling AKS, ACR, remote state in
+Azure Storage, NGINX LoadBalancer ingress, PostgreSQL, Redis, Prometheus, and
+Grafana. The application is built from this repository and pushed to ACR by
+the deployment wrapper.
+
+1. Install Terraform, Azure CLI, kubectl, and Docker. Authenticate the Azure
+   CLI with an account that can create resource groups and role assignments.
+2. Run `az login` and select the target subscription with `az account set`.
+   Terraform uses the Azure CLI credential automatically; service-principal
+   fields in the example files may remain `null`.
+3. Copy `infrastructure/terraform/terraform.tfvars.example` to
+   `infrastructure/terraform/terraform.tfvars`, and copy
+   `infrastructure/terraform/bootstrap/terraform.tfvars.example` to
+   `infrastructure/terraform/bootstrap/terraform.tfvars`. Fill in the same Azure service
+   principal values in both files. Never commit either real file.
+4. Set `offline_mode = false`, `llm_provider = "gemini"` and
+   `llm_model = "gemini-3.6-flash"` in the local tfvars file. Put newly rotated
+   `google_api_key` and `usda_api_key` values there locally; never send or
+   commit them.
+5. Run one command from the repository root:
+   - macOS/Linux/WSL: `bash infrastructure/deploy.sh`
+   - Windows PowerShell: `.\infrastructure\deploy.ps1`
+
+The wrapper bootstraps the encrypted remote state account, creates ACR,
+builds/pushes the image, applies all Azure and Kubernetes resources, installs
+the Helm monitoring stack, retrieves kubeconfig, and waits for the API rollout.
+No manually authored Kubernetes secret or manifest is required.
+
 [![Python Version](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
